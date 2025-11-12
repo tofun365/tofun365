@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>單字王｜互動練習（五年級）</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans TC', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-sky-50 to-amber-50 text-gray-800">
+  <div id="root" class="p-4"></div>
+
+  <!-- React 18 + Babel + QRCodeJS -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // ====== 詞庫（核心 / 延伸 / 進階 / Phonics） ======
+    const WORDS = [
+      // 第三單元核心（地點與動向｜11）
+      { en: "bank", zh: "銀行", categories: ["core", "place"], phonics: null, compoundType: "none", icon: "🏦" },
+      { en: "park", zh: "公園", categories: ["core", "place"], phonics: null, compoundType: "none", icon: "🏞️" },
+      { en: "bookstore", zh: "書店", categories: ["core", "place"], phonics: null, compoundType: "closed", icon: "🏪" },
+      { en: "post office", zh: "郵局", categories: ["core", "place"], phonics: null, compoundType: "open", icon: "🏤" },
+      { en: "hospital", zh: "醫院", categories: ["core", "place"], phonics: null, compoundType: "none", icon: "🏥" },
+      { en: "library", zh: "圖書館", categories: ["core", "place"], phonics: null, compoundType: "none", icon: "📚" },
+      { en: "museum", zh: "博物館", categories: ["core", "place"], phonics: null, compoundType: "none", icon: "🏛️" },
+      { en: "supermarket", zh: "超級市場", categories: ["core", "place"], phonics: null, compoundType: "closed", icon: "🛒" },
+      { en: "go to ...", zh: "去（某地）", categories: ["core"], phonics: null, compoundType: "none", icon: "➡️" },
+      { en: "road", zh: "路", categories: ["core", "place"], phonics: null, compoundType: "none", icon: "🛣️" },
+      { en: "street", zh: "街", categories: ["core", "place"], phonics: null, compoundType: "none", icon: "🏙️" },
+
+      // 課本延伸地點（10）
+      { en: "airport", zh: "機場", categories: ["extended", "place"], phonics: null, compoundType: "closed", icon: "✈️" },
+      { en: "bakery", zh: "麵包店", categories: ["extended", "place"], phonics: null, compoundType: "none", icon: "🥖" },
+      { en: "bus station", zh: "公車站（巴士總站）", categories: ["extended", "place"], phonics: null, compoundType: "open", icon: "🚌" },
+      { en: "convenience store", zh: "便利商店", categories: ["extended", "place"], phonics: null, compoundType: "open", icon: "🏪" },
+      { en: "fire station", zh: "消防局", categories: ["extended", "place"], phonics: null, compoundType: "open", icon: "🚒" },
+      { en: "gas station", zh: "加油站", categories: ["extended", "place"], phonics: null, compoundType: "open", icon: "⛽" },
+      { en: "police station", zh: "警察局", categories: ["extended", "place"], phonics: null, compoundType: "open", icon: "👮‍♂️" },
+      { en: "school", zh: "學校", categories: ["extended", "place"], phonics: null, compoundType: "none", icon: "🏫" },
+      { en: "temple", zh: "廟／寺廟", categories: ["extended", "place"], phonics: null, compoundType: "none", icon: "🛕" },
+      { en: "alley", zh: "巷子", categories: ["extended", "place"], phonics: null, compoundType: "none", icon: "🏘️" },
+
+      // 進階加強（給程度好的孩子）
+      { en: "amusement park", zh: "遊樂園", categories: ["advanced", "place"], phonics: null, compoundType: "open", icon: "🎢" },
+      { en: "Ferris wheel", zh: "摩天輪", categories: ["advanced"], phonics: null, compoundType: "open", icon: "🎡" },
+      { en: "castle", zh: "城堡", categories: ["advanced", "place"], phonics: null, compoundType: "none", icon: "🏰" },
+      { en: "exhibition", zh: "展覽", categories: ["advanced"], phonics: null, compoundType: "none", icon: "🖼️" },
+      { en: "beach", zh: "海灘", categories: ["advanced", "place"], phonics: null, compoundType: "none", icon: "🏖️" },
+      { en: "mall", zh: "購物中心", categories: ["advanced", "place"], phonics: null, compoundType: "none", icon: "🏬" },
+      { en: "movie theater", zh: "電影院", categories: ["advanced", "place"], phonics: null, compoundType: "open", icon: "🎦" },
+      { en: "restaurant", zh: "餐廳", categories: ["advanced", "place"], phonics: null, compoundType: "none", icon: "🍽️" },
+      { en: "sports center", zh: "運動中心", categories: ["advanced", "place"], phonics: null, compoundType: "open", icon: "🏟️" },
+      { en: "train station", zh: "火車站", categories: ["advanced", "place"], phonics: null, compoundType: "open", icon: "🚉" },
+
+      // Phonics an/ank（7）
+      { en: "can", zh: "能夠；罐頭", categories: ["phonics"], phonics: "an", compoundType: "none", icon: "🥫" },
+      { en: "fan", zh: "電扇；迷", categories: ["phonics"], phonics: "an", compoundType: "none", icon: "🌀" },
+      { en: "hand", zh: "手", categories: ["phonics"], phonics: "an", compoundType: "none", icon: "✋" },
+      { en: "sand", zh: "沙", categories: ["phonics"], phonics: "an", compoundType: "none", icon: "🏖️" },
+      { en: "thank", zh: "感謝", categories: ["phonics"], phonics: "ank", compoundType: "none", icon: "🙏" },
+      { en: "tank", zh: "坦克；水槽", categories: ["phonics"], phonics: "ank", compoundType: "none", icon: "🛢️" },
+      { en: "blank", zh: "空白", categories: ["phonics"], phonics: "ank", compoundType: "none", icon: "⬜" },
+
+      // Phonics ar/ark/art（7）
+      { en: "car", zh: "汽車", categories: ["phonics"], phonics: "ar", compoundType: "none", icon: "🚗" },
+      { en: "star", zh: "星星", categories: ["phonics"], phonics: "ar", compoundType: "none", icon: "⭐" },
+      { en: "dark", zh: "黑暗的", categories: ["phonics"], phonics: "ark", compoundType: "none", icon: "🌙" },
+      { en: "shark", zh: "鯊魚", categories: ["phonics"], phonics: "ark", compoundType: "none", icon: "🦈" },
+      { en: "part", zh: "部分", categories: ["phonics"], phonics: "art", compoundType: "none", icon: "🧩" },
+      { en: "start", zh: "開始", categories: ["phonics"], phonics: "art", compoundType: "none", icon: "▶️" },
+      { en: "smart", zh: "聰明的", categories: ["phonics"], phonics: "art", compoundType: "none", icon: "🧠" },
+
+      // Phonics o_e／oa／ow（15）
+      { en: "note", zh: "筆記；便條", categories: ["phonics"], phonics: "o_e", compoundType: "none", icon: "📝" },
+      { en: "rose", zh: "玫瑰花", categories: ["phonics"], phonics: "o_e", compoundType: "none", icon: "🌹" },
+      { en: "boat", zh: "船", categories: ["phonics"], phonics: "oa", compoundType: "none", icon: "⛵" },
+      { en: "goat", zh: "山羊", categories: ["phonics"], phonics: "oa", compoundType: "none", icon: "🐐" },
+      { en: "low", zh: "低的", categories: ["phonics"], phonics: "ow_oʊ", compoundType: "none", icon: "⬇️" },
+      { en: "row", zh: "划船", categories: ["phonics"], phonics: "ow_oʊ", compoundType: "none", icon: "🚣" },
+      { en: "home", zh: "家", categories: ["phonics"], phonics: "o_e", compoundType: "none", icon: "🏠" },
+      { en: "nose", zh: "鼻子", categories: ["phonics"], phonics: "o_e", compoundType: "none", icon: "👃" },
+      { en: "rope", zh: "繩子", categories: ["phonics"], phonics: "o_e", compoundType: "none", icon: "🪢" },
+      { en: "coat", zh: "外套", categories: ["phonics"], phonics: "oa", compoundType: "none", icon: "🧥" },
+      { en: "soap", zh: "肥皂", categories: ["phonics"], phonics: "oa", compoundType: "none", icon: "🧼" },
+      { en: "snow", zh: "雪", categories: ["phonics"], phonics: "ow_oʊ", compoundType: "none", icon: "❄️" },
+      { en: "slow", zh: "緩慢的", categories: ["phonics"], phonics: "ow_oʊ", compoundType: "none", icon: "🐢" },
+      { en: "grow", zh: "生長", categories: ["phonics"], phonics: "ow_oʊ", compoundType: "none", icon: "🌱" },
+      { en: "show", zh: "展示；表演", categories: ["phonics"], phonics: "ow_oʊ", compoundType: "none", icon: "🎬" },
+    ];
+
+    const PHONICS_GROUPS = [
+      { key: 'an', label: 'an' }, { key: 'ank', label: 'ank' }, { key: 'ar', label: 'ar' }, { key: 'ark', label: 'ark' }, { key: 'art', label: 'art' }, { key: 'o_e', label: 'o_e' }, { key: 'oa', label: 'oa' }, { key: 'ow_oʊ', label: 'ow (/oʊ/)' },
+    ];
+
+    // ====== 內建圖片：SVG 產生 + 少量客製圖示 ======
+    function svgData(svg){ return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`; }
+    function makeTile(emoji, label){
+      const colors = ["#E3F2FD","#FCE4EC","#E8F5E9","#FFF3E0","#E1F5FE","#F3E5F5","#FFFDE7","#EDE7F6","#F1F8E9","#ECEFF1"];
+      let hash = 0; for (let i=0;i<label.length;i++) hash=((hash<<5)-hash)+label.charCodeAt(i);
+      const bg = colors[Math.abs(hash)%colors.length];
+      const txt = label.length>14? label.slice(0,13)+"…" : label;
+      return svgData(`
+        <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+          <rect width='160' height='120' rx='14' ry='14' fill='${bg}'/>
+          <text x='80' y='62' font-size='56' text-anchor='middle' dominant-baseline='central' font-family='Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji'>${emoji||"🖼️"}</text>
+          <text x='80' y='106' font-size='14' text-anchor='middle' fill='#374151' font-family='ui-sans-serif, system-ui'>${txt}</text>
+        </svg>`);
+    }
+
+    const DEMO_PACK = {
+      bank: svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#FFF8E1'/>
+        <polygon points='80,15 15,45 145,45' fill='#FDD835'/>
+        <rect x='25' y='45' width='110' height='10' fill='#5D4037'/>
+        <rect x='35' y='55' width='10' height='45' fill='#8D6E63'/>
+        <rect x='60' y='55' width='10' height='45' fill='#8D6E63'/>
+        <rect x='85' y='55' width='10' height='45' fill='#8D6E63'/>
+        <rect x='110' y='55' width='10' height='45' fill='#8D6E63'/>
+      </svg>`),
+      park: svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#E8F5E9'/>
+        <circle cx='55' cy='55' r='24' fill='#66BB6A'/>
+        <rect x='52' y='60' width='6' height='30' fill='#8D6E63'/>
+        <rect x='90' y='75' width='50' height='8' fill='#795548'/>
+        <rect x='100' y='70' width='6' height='20' fill='#5D4037'/>
+      </svg>`),
+      "post office": svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#FFF3E0'/>
+        <rect x='30' y='35' width='100' height='60' rx='6' fill='#FFB74D'/>
+        <polygon points='30,35 80,65 130,35' fill='#F57C00'/>
+        <rect x='45' y='50' width='70' height='25' fill='#FFE0B2'/>
+        <line x1='45' y1='50' x2='115' y2='75' stroke='#F57C00' stroke-width='3'/>
+        <line x1='115' y1='50' x2='45' y2='75' stroke='#F57C00' stroke-width='3'/>
+      </svg>`),
+      beach: svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#E1F5FE'/>
+        <circle cx='130' cy='25' r='14' fill='#FFEE58'/>
+        <rect x='0' y='70' width='160' height='50' fill='#FFE082'/>
+        <path d='M0 70 Q20 60 40 70 T80 70 T120 70 T160 70' fill='none' stroke='#29B6F6' stroke-width='6'/>
+      </svg>`),
+      restaurant: svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#FFEBEE'/>
+        <circle cx='80' cy='70' r='28' fill='#EF9A9A'/>
+        <rect x='50' y='30' width='6' height='28' fill='#B71C1C'/>
+        <rect x='60' y='30' width='6' height='28' fill='#B71C1C'/>
+        <rect x='104' y='30' width='6' height='28' fill='#880E4F'/>
+        <rect x='98' y='30' width='6' height='28' fill='#880E4F'/>
+      </svg>`),
+      "amusement park": svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#F3E5F5'/>
+        <path d='M10 90 C40 40, 120 40, 150 90' fill='none' stroke='#8E24AA' stroke-width='6'/>
+        <circle cx='40' cy='60' r='4' fill='#8E24AA'/>
+        <circle cx='80' cy='50' r='4' fill='#8E24AA'/>
+        <circle cx='120' cy='60' r='4' fill='#8E24AA'/>
+      </svg>`),
+      "Ferris wheel": svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#EDE7F6'/>
+        <circle cx='80' cy='60' r='32' fill='none' stroke='#5E35B1' stroke-width='6'/>
+        <line x1='80' y1='28' x2='80' y2='92' stroke='#5E35B1' stroke-width='4'/>
+        <line x1='48' y1='60' x2='112' y2='60' stroke='#5E35B1' stroke-width='4'/>
+        <line x1='58' y1='38' x2='102' y2='82' stroke='#5E35B1' stroke-width='4'/>
+        <line x1='102' y1='38' x2='58' y2='82' stroke='#5E35B1' stroke-width='4'/>
+      </svg>`),
+      castle: svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#E0F7FA'/>
+        <rect x='30' y='55' width='100' height='45' fill='#90A4AE'/>
+        <rect x='30' y='40' width='20' height='15' fill='#78909C'/>
+        <rect x='110' y='40' width='20' height='15' fill='#78909C'/>
+        <polygon points='40,40 50,25 60,40' fill='#78909C'/>
+        <polygon points='110,40 120,25 130,40' fill='#78909C'/>
+        <rect x='70' y='70' width='20' height='30' fill='#607D8B'/>
+      </svg>`),
+      exhibition: svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#FFFDE7'/>
+        <rect x='30' y='30' width='100' height='70' fill='#FFF59D' stroke='#FBC02D' stroke-width='6'/>
+        <polygon points='45,85 80,50 115,85' fill='#FBC02D'/>
+      </svg>`),
+      mall: svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#F1F8E9'/>
+        <rect x='25' y='45' width='110' height='50' fill='#AED581'/>
+        <rect x='35' y='55' width='25' height='20' fill='#8BC34A'/>
+        <rect x='70' y='55' width='25' height='20' fill='#8BC34A'/>
+        <rect x='105' y='55' width='25' height='20' fill='#8BC34A'/>
+      </svg>`),
+      "movie theater": svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#ECEFF1'/>
+        <rect x='25' y='25' width='110' height='60' fill='#90A4AE'/>
+        <rect x='35' y='35' width='90' height='40' fill='#263238'/>
+        <rect x='45' y='90' width='70' height='10' fill='#607D8B'/>
+      </svg>`),
+      "sports center": svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#E8EAF6'/>
+        <circle cx='55' cy='60' r='16' fill='#3949AB'/>
+        <line x1='80' y1='45' x2='120' y2='75' stroke='#5C6BC0' stroke-width='10' stroke-linecap='round'/>
+      </svg>`),
+      "train station": svgData(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'>
+        <rect width='160' height='120' fill='#FBE9E7'/>
+        <rect x='45' y='30' width='70' height='50' rx='8' fill='#D84315'/>
+        <rect x='50' y='35' width='60' height='26' fill='#FFCCBC'/>
+        <line x1='20' y1='95' x2='140' y2='95' stroke='#6D4C41' stroke-width='6'/>
+        <line x1='30' y1='105' x2='130' y2='105' stroke='#6D4C41' stroke-width='6'/>
+      </svg>`),
+    };
+
+    const BUILTIN_SVGS = WORDS.reduce((acc, w) => { acc[w.en] = DEMO_PACK[w.en] || makeTile(w.icon || "🖼️", w.en); return acc; }, {});
+
+    // ====== 工具函式 ======
+    function speak(text){ try{ const s = window.speechSynthesis; if(!s) return; const u = new SpeechSynthesisUtterance(text); u.lang='en-US'; u.rate=0.95; s.cancel(); setTimeout(()=>s.speak(u),0); }catch{} }
+    function shuffle(arr, seed=Math.random()){
+      const a = arr.slice(); let s = Math.floor(seed*1e9)||42;
+      for(let i=a.length-1;i>0;i--){ s=(1664525*s+1013904223)%0xffffffff; const j=s%(i+1); [a[i],a[j]]=[a[j],a[i]]; }
+      return a;
+    }
+    function todaySeed(){ const d=new Date(); const y=d.getFullYear(); const m=d.getMonth()+1; const day=d.getDate(); return Number(`${y}${String(m).padStart(2,'0')}${String(day).padStart(2,'0')}`)/1e8; }
+
+    // ====== UI 基件 ======
+    function Tag({children}){ return <span className="inline-block rounded-full border px-2 py-0.5 text-xs text-gray-600 border-gray-300">{children}</span>; }
+    function cardStyle(){ return "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"; }
+    function Picture({ src, icon }){ return (<div className="mb-3 flex h-40 items-center justify-center overflow-hidden rounded-2xl bg-gray-50">{src ? (<img src={src} alt="illustration" className="h-full w-full object-contain" />) : (<div className="select-none text-6xl" aria-hidden>{icon || '🖼️'}</div>)}</div>); }
+
+    // ====== App 根元件 ======
+    function App(){
+      const [mode, setMode] = useState('flash');
+      const [filter, setFilter] = useState('all');
+      const [shuffleOn, setShuffleOn] = useState(true);
+      const [showImages, setShowImages] = useState(true);
+      const [fillMissing, setFillMissing] = useState(true);
+      const [packUrl, setPackUrl] = useState('');
+      const [packStatus, setPackStatus] = useState('idle');
+      const [packImages, setPackImages] = useState({});
+      const [shareOpen, setShareOpen] = useState(false);
+
+      // URL ?pack= 參數自動帶入
+      useEffect(()=>{ try{ const p=new URLSearchParams(location.search).get('pack'); if(p) setPackUrl(p); }catch{} },[]);
+
+      // 讀取 JSON 圖片包（可選）
+      useEffect(()=>{
+        if(!packUrl){ setPackImages({}); setPackStatus('idle'); return; }
+        (async()=>{
+          try{ setPackStatus('loading'); const res=await fetch(packUrl,{cache:'no-store'}); if(!res.ok) throw new Error(res.statusText); const json=await res.json(); setPackImages(json||{}); setPackStatus('ok'); }
+          catch{ setPackImages({}); setPackStatus('error'); }
+        })();
+      },[packUrl]);
+
+      const filtered = useMemo(()=>{
+        if(filter==='all') return WORDS; if(filter==='phonics') return WORDS.filter(w=>w.categories.includes('phonics'));
+        return WORDS.filter(w=>w.categories.includes(filter));
+      },[filter]);
+
+      const deck = useMemo(()=> shuffleOn ? shuffle(filtered) : filtered, [filtered, shuffleOn]);
+
+      const useOnlyBuiltIn = packStatus!=='ok' || Object.keys(packImages).length===0;
+      const activePack = useOnlyBuiltIn ? BUILTIN_SVGS : (fillMissing ? {...BUILTIN_SVGS, ...packImages} : packImages);
+      const imgFor = (en)=> showImages ? (activePack[en] || null) : null;
+
+      useEffect(()=>{ if(!shareOpen) return; const box = document.getElementById('qr-box'); if(box){ box.innerHTML=''; new QRCode(box, { text: window.location.href, width: 220, height: 220 }); } }, [shareOpen]);
+
+      return (
+        <div className="mx-auto max-w-5xl">
+          <header className="mb-4 flex items-baseline justify-between gap-3">
+            <h1 className="text-2xl font-bold">單字王｜互動練習（五年級）</h1>
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span>{useOnlyBuiltIn ? '使用內建 SVG（全覆蓋）' : (fillMissing ? '已載入共享圖＋內建補齊' : '已載入共享圖')}</span>
+              <button onClick={()=>setShareOpen(true)} className="rounded-lg border border-gray-300 bg-white px-2 py-1 hover:bg-gray-50">分享/QR</button>
+            </div>
+          </header>
+
+          {/* 模式工具列 */}
+          <div className="mb-4 flex flex-wrap gap-2">
+            {[['flash','Flashcards 卡片'],['spell','Spelling 拼字'],['phonics','Phonics 分類'],['compound','合寫／分寫'],['daily','每日 5 字']].map(([k,label])=> (
+              <button key={k} onClick={()=>setMode(k)} className={`rounded-2xl px-3 py-1.5 text-sm ${mode===k?'bg-black text-white':'bg-white hover:bg-gray-100 border border-gray-300'}`}>{label}</button>
+            ))}
+          </div>
+
+          {/* 篩選與設定 */}
+          <div className="mb-6 rounded-2xl border border-gray-200 bg-white/70 p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+                <h2 className="text-lg font-semibold">篩選與設定</h2>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {['all','core','extended','advanced','phonics','place'].map(k=> (
+                    <button key={k} onClick={()=>setFilter(k)} className={`rounded-xl px-2 py-1 border ${filter===k?'bg-blue-600 text-white border-blue-600':'bg-white hover:bg-gray-50 border-gray-300'}`}>
+                      {k==='all'? '全部': k==='core'? '第三單元核心': k==='extended'? '課本延伸': k==='advanced'? '進階加強': k==='phonics'? 'Phonics 家族':'地點類'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-gray-700"><input type="checkbox" className="accent-black" checked={shuffleOn} onChange={e=>setShuffleOn(e.target.checked)} />隨機</label>
+            </div>
+
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <label className="flex w-full items-center gap-2 text-xs text-gray-700">
+                <span className="w-28 shrink-0">班級共享圖片</span>
+                <input type="url" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black" value={packUrl} onChange={e=>setPackUrl(e.target.value)} placeholder="（可略過）貼 JSON 連結，可覆蓋圖片" />
+              </label>
+              <div className="flex shrink-0 items-center gap-3">
+                <label className="flex items-center gap-2 text-xs text-gray-700"><input type="checkbox" className="accent-black" checked={fillMissing} onChange={e=>setFillMissing(e.target.checked)} />缺圖時用內建補齊</label>
+                <label className="flex items-center gap-2 text-xs text-gray-700"><input type="checkbox" className="accent-black" checked={showImages} onChange={e=>setShowImages(e.target.checked)} />顯示圖片</label>
+              </div>
+            </div>
+            <div className="mt-2 text-[11px] leading-relaxed text-gray-500">可在網址後加 <b>?pack=</b> 指定 JSON。未提供或讀取失敗會自動使用內建圖。</div>
+          </div>
+
+          {mode==='flash' && <Flashcards deck={deck} imgFor={imgFor} />}
+          {mode==='spell' && <Spelling pool={deck} />}
+          {mode==='phonics' && <PhonicsGame words={WORDS.filter(w=>w.categories.includes('phonics'))} />}
+          {mode==='compound' && <CompoundGame words={WORDS.filter(w=>w.compoundType!=='none')} />}
+          {mode==='daily' && <DailyFive all={WORDS} imgFor={imgFor} />}
+
+          <footer className="mt-10 text-center text-xs text-gray-500">提示：朗讀若沒聲音，請先在頁面任意點一下再按 🔊，或改用 Chrome / Edge。</footer>
+
+          {shareOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <div className="w-[360px] rounded-2xl bg-white p-4 shadow-xl">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="font-semibold">分享此頁</div>
+                  <button className="rounded-lg px-2 py-1 text-sm hover:bg-gray-100" onClick={()=>setShareOpen(false)}>關閉</button>
+                </div>
+                <div id="qr-box" className="mx-auto my-2 flex h-[240px] w-[240px] items-center justify-center rounded-xl border border-gray-200"></div>
+                <div className="text-xs text-gray-600 break-all">{window.location.href}</div>
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <button className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50" onClick={()=>{navigator.clipboard?.writeText(window.location.href)}}>複製連結</button>
+                  <button className="rounded-lg bg-black px-3 py-1.5 text-sm text-white" onClick={()=>window.print()}>列印</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ====== 各模式元件 ======
+    function Flashcards({ deck, imgFor }){
+      const [idx, setIdx] = useState(0); const [flipped, setFlipped] = useState(false);
+      const total = deck.length; const w = deck[idx]; if(!w) return null;
+      useEffect(()=>{ const onKey = (e)=>{ if(e.key==='ArrowLeft') setIdx(i=>(i-1+total)%total); if(e.key==='ArrowRight') setIdx(i=>(i+1)%total); if(e.key===' '){ e.preventDefault(); setFlipped(f=>!f);} }; window.addEventListener('keydown', onKey); return ()=>window.removeEventListener('keydown', onKey); }, [total]);
+      return (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_320px]">
+          <div className={cardStyle()+" cursor-pointer transition-transform hover:scale-[1.01]"} onClick={()=>setFlipped(f=>!f)}>
+            <div className="flex items-start justify-between">
+              <div className="text-xs text-gray-500">{idx+1}/{total}</div>
+              <div className="flex items-center gap-2">
+                {w.compoundType && w.compoundType!=='none' && <Tag>{w.compoundType==='closed'?'合寫':'分寫'}</Tag>}
+                {w.categories.includes('place') && <Tag>地點</Tag>}
+                {w.categories.includes('advanced') && <span className="inline-block rounded-full border border-amber-400 bg-amber-50 px-2 py-0.5 text-xs text-amber-700">進階</span>}
+              </div>
+            </div>
+            <Picture src={imgFor(w.en)} icon={w.icon} />
+            <div className="mt-2 text-center">
+              {!flipped ? (<><div className="mb-3 text-4xl font-black tracking-wide">{w.en}</div><div className="text-sm text-gray-500">點擊翻面 / Click to flip</div></>) : (<><div className="mb-2 text-2xl font-semibold">{w.zh}</div><div className="text-sm text-gray-500">{w.en}</div></>)}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className={cardStyle()+" p-4"}>
+              <div className="mb-2 flex items-center justify-between"><div className="font-medium">工具</div><button onClick={()=>speak(w.en)} className="rounded-xl border border-gray-300 bg-white px-2 py-1 text-xs hover:bg-gray-50" aria-label="朗讀">🔊 朗讀</button></div>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={()=>setFlipped(f=>!f)} className="rounded-xl bg-black px-3 py-1.5 text-white">翻面 (空白鍵)</button>
+                <button onClick={()=>setIdx(i=>(i-1+total)%total)} className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 hover:bg-gray-50">上一張 (←)</button>
+                <button onClick={()=>setIdx(i=>(i+1)%total)} className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 hover:bg-gray-50">下一張 (→)</button>
+                <button onClick={()=>setIdx(Math.floor(Math.random()*total))} className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 hover:bg-gray-50">隨機一張</button>
+              </div>
+              <div className="pt-1 text-xs text-gray-600">若貼了班級 JSON，勾選「缺圖時用內建補齊」可讓沒列到的單字仍顯示內建圖。</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function normalize(s){ return s.toLowerCase().replace(/\s+/g,' ').trim(); }
+    function Spelling({ pool }){
+      const [i,setI]=useState(0); const [answer,setAnswer]=useState(''); const [result,setResult]=useState(null); const [score,setScore]=useState({correct:0,total:0});
+      const w = pool[i]; if(!w) return null; function submit(){ const ok=normalize(answer)===normalize(w.en); setResult(ok); setScore(s=>({correct:s.correct+(ok?1:0), total:s.total+1})); }
+      function next(){ setI(x=>(x+1)%pool.length); setAnswer(''); setResult(null);} 
+      return (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_320px]">
+          <div className={cardStyle()}>
+            <div className="mb-1 text-xs text-gray-500">中文提示</div>
+            <div className="mb-4 text-2xl font-semibold">{w.zh}</div>
+            <div className="mb-3 text-sm text-gray-500">提示類別：{w.categories.includes('phonics')?'Phonics': w.categories.includes('place')?'地點': w.categories.includes('advanced')?'進階':'一般'}</div>
+            <div className="flex items-center gap-2">
+              <input className="w-full rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black" placeholder="請輸入英文拼字" value={answer} onChange={e=>setAnswer(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') submit();}} />
+              <button onClick={submit} className="rounded-xl bg-black px-4 py-2 text-white">送出</button>
+            </div>
+            {result!==null && (<div className={`mt-4 rounded-xl p-3 text-sm ${result?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}`}>{result? '太棒了，正確！' : <div>再試一次～ 正解：<b className="font-semibold">{w.en}</b></div>}</div>)}
+          </div>
+          <div className={cardStyle()+" space-y-2 p-4"}>
+            <div className="font-medium">小工具</div>
+            <button onClick={()=>speak(w.en)} className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50">🔊 播放單字</button>
+            <button onClick={next} className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50">下一題</button>
+            <div className="pt-2 text-xs text-gray-600">得分：{score.correct}/{score.total}</div>
+          </div>
+        </div>
+      );
+    }
+
+    function PhonicsGame({ words }){
+      const candidates = useMemo(()=> shuffle(words).slice(0,10), [words]);
+      const [idx,setIdx]=useState(0); const [fb,setFb]=useState(null); const w=candidates[idx]; if(!w) return null;
+      function pick(key){ const ok=w.phonics===key; setFb(ok?{ok:true,msg:'正確！'}:{ok:false,msg:`再想想～ 正確是 ${w.phonics}`}); setTimeout(()=>{ setFb(null); setIdx(i=>(i+1)%candidates.length); }, 700); }
+      return (
+        <div className={cardStyle()}>
+          <div className="mb-1 text-xs text-gray-500">請選出此字的發音家族</div>
+          <div className="mb-4 text-center text-4xl font-black tracking-wide">{w.en}</div>
+          <div className="mb-4 text-center text-sm text-gray-500">{w.zh}</div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{PHONICS_GROUPS.map(g=>(<button key={g.key} onClick={()=>pick(g.key)} className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm hover:bg-gray-50">{g.label}</button>))}</div>
+          {fb && (<div className={`mt-4 rounded-xl p-3 text-center text-sm ${fb.ok?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}`}>{fb.msg}</div>)}
+        </div>
+      );
+    }
+
+    function CompoundGame({ words }){
+      const items = useMemo(()=> shuffle(words).slice(0,10), [words]);
+      const [idx,setIdx]=useState(0); const [fb,setFb]=useState(null); const w=items[idx]; if(!w) return null;
+      function choose(type){ const ok=w.compoundType===type; setFb(ok?{ok:true,msg:'答對！'}:{ok:false,msg:`正確是：${w.compoundType==='closed'?'合寫 [C]':'分寫 [O]'}`}); setTimeout(()=>{ setFb(null); setIdx(i=>(i+1)%items.length); }, 700); }
+      return (
+        <div className={cardStyle()+" text-center"}>
+          <div className="mb-1 text-xs text-gray-500">請判斷本字是合寫（Closed）還是分寫（Open）</div>
+          <div className="mb-4 text-4xl font-black tracking-wide">{w.en}</div>
+          <div className="mb-4 text-sm text-gray-500">{w.zh}</div>
+          <div className="flex items-center justify-center gap-2">
+            <button onClick={()=>choose('closed')} className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50">合寫 [C]</button>
+            <button onClick={()=>choose('open')} className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50">分寫 [O]</button>
+          </div>
+          {fb && (<div className={`mt-4 rounded-xl p-3 text-sm ${fb.ok?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}`}>{fb.msg}</div>)}
+        </div>
+      );
+    }
+
+    function DailyFive({ all, imgFor }){
+      const [seed,setSeed]=useState(todaySeed());
+      const five = useMemo(()=> shuffle(all, seed).slice(0,5), [all, seed]);
+      function copy(){ const text=five.map((w,i)=>`${i+1}. ${w.en} — ${w.zh}`).join('\n'); navigator.clipboard?.writeText(text); alert('已複製今日 5 字！'); }
+      function printList(){ const w=window.open('', '_blank'); if(!w) return; const list=five.map(w=>`<li><b>${w.en}</b> — ${w.zh}</li>`).join(''); w.document.write(`<!doctype html><meta charset='utf-8'/><title>今日 5 字</title><style>body{font-family:ui-sans-serif,system-ui; padding:24px} h1{font-size:20px} li{margin:8px 0}</style><h1>今日 5 字</h1><ol>${list}</ol>`); w.document.close(); w.focus(); w.print(); }
+      return (
+        <div className={cardStyle()}>
+          <div className="mb-2 text-sm text-gray-600">依日期產生固定 5 字。可複製或列印成小卡。</div>
+          <ol className="mb-4 list-decimal space-y-2 pl-5">
+            {five.map((w,i)=> (
+              <li key={i} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 overflow-hidden rounded-xl bg-gray-50">
+                    {imgFor(w.en) ? (<img src={imgFor(w.en)} alt="thumb" className="h-full w-full object-contain" />) : (<div className="flex h-full w-full select-none items-center justify-center text-2xl">{w.icon || '🖼️'}</div>)}
+                  </div>
+                  <div>
+                    <div className="font-semibold">{w.en}</div>
+                    <div className="text-xs text-gray-500">{w.zh}</div>
+                  </div>
+                </div>
+                <button onClick={()=>speak(w.en)} className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs">🔊</button>
+              </li>
+            ))}
+          </ol>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={()=>setSeed(todaySeed())} className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50">今天</button>
+            <button onClick={()=>setSeed(Math.random())} className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50">換一組</button>
+            <button onClick={copy} className="rounded-xl bg-black px-3 py-1.5 text-sm text-white">複製</button>
+            <button onClick={printList} className="rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50">列印</button>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App/>);
+  </script>
+</body>
+</html>
